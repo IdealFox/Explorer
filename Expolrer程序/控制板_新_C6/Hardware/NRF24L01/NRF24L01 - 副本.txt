@@ -1,0 +1,49 @@
+
+/** @brief	NRF24L01读STATUS寄存器
+  * @retval	读到的值
+  **/
+u8 NRF24L01_Read_STATUS(void)
+{	
+	u8 Byte;
+	NRF24L01_CS(0);
+	Byte=SPI1_SwapByte(0XFF);
+	NRF24L01_CS(1);
+	return Byte;
+}
+
+/** @brief	NRF24L01模块初始化,数据接收
+	* @retval	0:初始化成功		1:初始化失败
+  **/
+u8 NRF24L01_Init(void)
+{	
+	u8 Test_Addr,Status;
+	NRF24L01_GPIO_Init();															//GPIO初始化
+	
+	Status=NRF24L01_Read_STATUS();										//获取STATUS参数
+	NRF24L01_W_Data(W_REGISTER|STATUS,Status);				//清除STATUS标志位
+	
+	NRF24L01_CE(0);																		//待机模式
+	
+	NRF24L01_W_Data(W_REGISTER|RF_CH,NRF_24L01_Channel);										//配置通讯通道(频率)
+	NRF24L01_W_Data_More(W_REGISTER|TX_ADDR,(u8*)NRF34L01_TX_Address,5);		//配置发送地址
+	NRF24L01_W_Data_More(W_REGISTER|RX_ADDR_P0,(u8*)NRF34L01_RX_Address,5);	//配置接收地址，通道0
+
+	NRF24L01_W_Data(W_REGISTER|CONFIG,0X0F);					//配置寄存器，接收模式
+	NRF24L01_W_Data(W_REGISTER|EN_AA,0X01);						//通道0开启自动应答
+	NRF24L01_W_Data(W_REGISTER|RX_PW_P0,32);					//数据包长度，32字节	
+	NRF24L01_W_Data(W_REGISTER|EN_RXADDR,0X01);		 		//开启接收通道0
+	NRF24L01_W_Data(W_REGISTER|SETUP_RETR,0X1A);			//配置自动重发,间隔500us,10次
+	NRF24L01_W_Data(W_REGISTER|RF_STEUP,0X07);				//射频功率
+	NRF24L01_W_Data(FLUSH_RX,0XFF);										//清除接收数据缓存器
+	NRF24L01_W_Data(FLUSH_TX,0XFF);										//清除发射数据缓存器
+	
+	NRF24L01_CE(1);																		//取消待机
+	
+	Test_Addr=NRF24L01_R_Data(RF_CH);									//获取NRF24L01通道参数
+	if(Test_Addr!=(NRF_24L01_Channel&0X7F))						//验证初始化是否成功
+	{	return 1;}
+	
+	return 0;
+}
+
+
